@@ -7,7 +7,8 @@ from rest_framework import status
 from .serializers import ImageModelSerializer
 from PIL import Image as pilimage
 import os
-
+from io import BytesIO
+from django.core.files.uploadedfile import InMemoryUploadedFile
 
 class AddImageView(APIView):
     # permission/authentication
@@ -41,6 +42,7 @@ class AddImageView(APIView):
         # 2. size compilation:
         title = serializer.validated_data["title"]
         uploaded_image = serializer.validated_data.get("upload_image")
+        print(type(uploaded_image))
         image = pilimage.open(uploaded_image)
 
         expected_width = None
@@ -72,14 +74,37 @@ class AddImageView(APIView):
                     (expected_width, new_height), pilimage.LANCZOS
                 )
 
-            resized_img.save("nowy_obraz.jpg")
-            serializer.validated_data["upload_image"] = resized_img
+            output_stream = BytesIO()
+            resized_img.save(output_stream, format=format)
+            image_file = InMemoryUploadedFile(
+                output_stream,
+                None,
+                "nowy_obraz.jpg",
+                f"image/{format.lower()}",
+                output_stream.tell(),
+                None,
+            )
+
+            print(type(image_file))
+
+            serializer.validated_data["upload_image"] = image_file
             if not serializer.is_valid():
                 return JsonResponse(
                     serializer.errors, status=status.HTTP_400_BAD_REQUEST
                 )
 
             serializer.save()
+
+            # print(type(resized_img))
+            # resized_img.save("nowy_obraz.jpg")
+            # print(type(resized_img))
+            # serializer.validated_data["upload_image"] = resized_img
+            # if not serializer.is_valid():
+            #     return JsonResponse(
+            #         serializer.errors, status=status.HTTP_400_BAD_REQUEST
+            #     )
+
+            # serializer.save()
 
             # resized_img.save('nowy_obraz.jpg', str(format))
             # resized_image_model = ImageModel(title=title, author=author, upload_image=resized_img)
