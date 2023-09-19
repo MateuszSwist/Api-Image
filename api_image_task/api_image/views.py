@@ -3,12 +3,16 @@ from rest_framework.authentication import SessionAuthentication, BasicAuthentica
 from rest_framework.permissions import IsAuthenticated
 from .models import ImagexAccount, ImageModel
 from django.http import JsonResponse
-from rest_framework import status
+from rest_framework import status, viewsets
 from .serializers import ImageModelSerializer
 from PIL import Image as pilimage
 import os
 from io import BytesIO
 from django.core.files.uploadedfile import InMemoryUploadedFile
+from rest_framework.parsers import MultiPartParser, FormParser
+from django.shortcuts import get_object_or_404
+from django.http import FileResponse
+
 
 class AddImageView(APIView):
     # permission/authentication
@@ -16,6 +20,8 @@ class AddImageView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
+        file_links = []
+
         # getting account tier
         try:
             account_tier = request.user.user.account_type
@@ -29,7 +35,7 @@ class AddImageView(APIView):
         serializer = ImageModelSerializer(data=request.data)
         if not serializer.is_valid():
             return JsonResponse(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
+        title = serializer.validated_data["title"]
         # adding author
         author = request.user.user
         serializer.validated_data["author"] = author
@@ -38,11 +44,10 @@ class AddImageView(APIView):
         # 1.orginal link
         if account_tier.orginal_image_link:
             serializer.save()
+            file_links.append(serializer.instance.upload_image.url)
 
         # 2. size compilation:
-        title = serializer.validated_data["title"]
         uploaded_image = serializer.validated_data.get("upload_image")
-        print(type(uploaded_image))
         image = pilimage.open(uploaded_image)
 
         expected_width = None
@@ -79,34 +84,29 @@ class AddImageView(APIView):
             image_file = InMemoryUploadedFile(
                 output_stream,
                 None,
-                "nowy_obraz.jpg",
+                "resized_image.jpg",
                 f"image/{format.lower()}",
                 output_stream.tell(),
                 None,
             )
 
-            print(type(image_file))
+            image_model = ImageModel(
+                title=title, author=author, upload_image=image_file
+            )
+            image_model.save()
+            file_links.append(image_model.upload_image.url)
 
-            serializer.validated_data["upload_image"] = image_file
-            if not serializer.is_valid():
-                return JsonResponse(
-                    serializer.errors, status=status.HTTP_400_BAD_REQUEST
-                )
+        data = {"file_links": file_links}
+        return JsonResponse(data, status=status.HTTP_201_CREATED)
 
-            serializer.save()
 
-            # print(type(resized_img))
-            # resized_img.save("nowy_obraz.jpg")
-            # print(type(resized_img))
-            # serializer.validated_data["upload_image"] = resized_img
-            # if not serializer.is_valid():
-            #     return JsonResponse(
-            #         serializer.errors, status=status.HTTP_400_BAD_REQUEST
-            #     )
-
-            # serializer.save()
-
-            # resized_img.save('nowy_obraz.jpg', str(format))
-            # resized_image_model = ImageModel(title=title, author=author, upload_image=resized_img)
-
-            # resized_image_model.save()
+class ImageView(APIView):
+    def get(self, request, image_name):
+        try:
+            image = ImageModel.objects.get(upload_image=image_name)
+            image_file = image.upload_image.path
+            return FileResponse(open(image_file, "rb"))
+        except ImageModel.DoesNotExist:
+            return JsonResponse(
+                {"message": "Image not found"}, status=status.HTTP_404_NOT_FOUND
+            )
