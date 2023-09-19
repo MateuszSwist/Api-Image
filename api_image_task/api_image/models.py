@@ -35,7 +35,7 @@ class ImageModel(models.Model):
     add_time = models.DateTimeField(auto_now_add=True)
     title = models.CharField(max_length=128)
     author = models.ForeignKey(ImagexAccount, on_delete=models.CASCADE)
-    upload_image = models.ImageField(upload_to="images/")
+    upload_image = models.ImageField()
 
     def __str__(self):
         return f" Image title: {self.title} by {self.author} added at {self.add_time}."
