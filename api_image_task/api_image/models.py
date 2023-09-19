@@ -5,17 +5,17 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 
 class ThumbnailDimentions(models.Model):
     height = models.IntegerField()
-    width = models.IntegerField(null=True)
+    width = models.IntegerField(null=True, blank=True)
 
     def __str__(self):
-        return self.height
+        return f"Height:{self.height}, width:{self.width}."
 
 
 class AccountTier(models.Model):
     name = models.CharField(max_length=64)
     orginal_image_link = models.BooleanField(default=False)
     time_limited_link = models.BooleanField(default=False)
-    image_size = models.ManyToManyField(ThumbnailDimentions, related_name="size")
+    image_size = models.ManyToManyField(ThumbnailDimentions)
 
     def __str__(self):
         return self.name
@@ -56,4 +56,3 @@ class ExpiringLinks(models.Model):
 
     def __str__(self):
         return f"Line expire in: {self.time_to_expire} sec, owner: {self.owner}."
-
