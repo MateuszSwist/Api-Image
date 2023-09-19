@@ -3,7 +3,8 @@ from rest_framework.authentication import SessionAuthentication, BasicAuthentica
 from rest_framework.permissions import IsAuthenticated
 from .models import ImagexAccount, ImageModel
 from django.http import JsonResponse
-from rest_framework import status, viewsets
+from rest_framework import status
+from rest_framework.response import Response
 from .serializers import ImageModelSerializer
 from PIL import Image as pilimage
 import os
@@ -110,3 +111,16 @@ class ImageView(APIView):
             return JsonResponse(
                 {"message": "Image not found"}, status=status.HTTP_404_NOT_FOUND
             )
+        
+class UserImagesView(APIView):
+    authentication_classes = [SessionAuthentication, BasicAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        print('jestem w funkcji')
+        user = self.request.user.user
+        print(user.id)
+        images = ImageModel.objects.filter(author=user)
+        print(images)
+        serializer = ImageModelSerializer(images, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
