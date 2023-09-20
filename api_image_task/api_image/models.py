@@ -53,6 +53,7 @@ class ExpiringLinks(models.Model):
     owner = models.ForeignKey(
         ImagexAccount, on_delete=models.CASCADE, related_name="owner"
     )
+    expiring_link = models.CharField(max_length=256, null=True, blank=True)
 
     def __str__(self):
         return f"Line expire in: {self.time_to_expire} sec, owner: {self.owner}."

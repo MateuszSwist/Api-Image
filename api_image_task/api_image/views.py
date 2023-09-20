@@ -1,3 +1,5 @@
+import string
+import secrets
 from rest_framework.views import APIView
 from rest_framework.authentication import SessionAuthentication, BasicAuthentication
 from rest_framework.permissions import IsAuthenticated
@@ -5,13 +7,14 @@ from .models import ImagexAccount, ImageModel
 from django.http import JsonResponse
 from rest_framework import status
 from rest_framework.response import Response
-from .serializers import ImageModelSerializer
+from .serializers import (
+    ImageModelSerializer,
+    ExpiringLinksSerializer,
+    LoadTimeExpriginLinks,
+)
 from PIL import Image as pilimage
-import os
 from io import BytesIO
 from django.core.files.uploadedfile import InMemoryUploadedFile
-from rest_framework.parsers import MultiPartParser, FormParser
-from django.shortcuts import get_object_or_404
 from django.http import FileResponse
 
 
@@ -111,16 +114,56 @@ class ImageView(APIView):
             return JsonResponse(
                 {"message": "Image not found"}, status=status.HTTP_404_NOT_FOUND
             )
-        
+
+
 class UserImagesView(APIView):
     authentication_classes = [SessionAuthentication, BasicAuthentication]
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        print('jestem w funkcji')
         user = self.request.user.user
-        print(user.id)
-        images = ImageModel.objects.filter(author=user)
-        print(images)
-        serializer = ImageModelSerializer(images, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        try:
+            images = ImageModel.objects.filter(author=user)
+            serializer = ImageModelSerializer(images, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except ImageModel.DoesNotExist:
+            return JsonResponse(
+                {"message": f"Not found any images of {self.user}"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+
+class AddLinkToEspiringLinksView(APIView):
+    authentication_classes = [SessionAuthentication, BasicAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        user = self.request.user.user
+        serializer = ExpiringLinksSerializer(data=request.data)
+        if not serializer.is_valid():
+            return JsonResponse(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        second_to_expire = serializer.validated_data["time_to_expire"]
+        image_pk = serializer.validated_data["image"]
+        random_string = "".join(
+            secrets.choice(string.ascii_letters + string.digits) for _ in range(10)
+        )
+        link = f"time-link/{random_string}"
+        serializer.save(owner=user, expiring_link=link, image=image_pk)
+
+        data = {
+            "second to expire": second_to_expire,
+            "expiring link": link,
+        }
+        return JsonResponse(data, status=status.HTTP_201_CREATED)
+
+
+# class LoadExpiringLinkView(APIView):
+
+#     def get(self, request):
+#         serializer = LoadTimeExpriginLinks
+#         if not serializer.is_valid():
+#             return JsonResponse(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+#         try:
+#             image = ImageModel.objects.get(upload_image__image_name)
+#             image_file = image.upload_image.path
+#             return FileResponse(open(image_file, "rb"))
