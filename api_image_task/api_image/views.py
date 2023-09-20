@@ -1,20 +1,58 @@
 import string
-from rest_framework.views import APIView
 import secrets
+from io import BytesIO
+from PIL import Image as pilimage
+
 from django.utils import timezone
+from django.http import JsonResponse, FileResponse
+from django.core.files.uploadedfile import InMemoryUploadedFile
+
+from rest_framework.views import APIView
 from rest_framework.authentication import SessionAuthentication, BasicAuthentication
 from rest_framework.permissions import IsAuthenticated
-from .models import ImagexAccount, ImageModel, ExpiringLinks
-from django.http import JsonResponse
 from rest_framework import status
-from .serializers import (
-    ImageModelSerializer,
-    ExpiringLinksSerializer,
-)
-from PIL import Image as pilimage
-from io import BytesIO
-from django.core.files.uploadedfile import InMemoryUploadedFile
-from django.http import FileResponse
+
+from .models import ImagexAccount, ImageModel, ExpiringLinks
+from .serializers import ImageModelSerializer, ExpiringLinksSerializer
+
+
+def generate_links(
+    image_sizes, image, original_width, original_height, title, author, format="JPEG"
+):
+    file_links = []
+    format = image.format
+    for size in image_sizes:
+        if size.width and size.height:
+            expected_size = (size.width, size.height)
+        elif size.width:
+            new_height = int(original_height * (size.width / original_width))
+            expected_size = (size.width, new_height)
+        elif size.height:
+            new_width = int(original_width * (size.height / original_height))
+            expected_size = (new_width, size.height)
+        else:
+            expected_size = (original_width, original_height)
+
+        resized_img = image.resize(expected_size, pilimage.LANCZOS)
+
+        output_stream = BytesIO()
+        resized_img.save(output_stream, format=format)
+
+        image_file = InMemoryUploadedFile(
+            output_stream,
+            None,
+            "resized_image.jpg",
+            f"image/{format.lower()}",
+            output_stream.tell(),
+            None,
+        )
+
+        image_model = ImageModel(title=title, author=author, upload_image=image_file)
+
+        image_model.save()
+        file_links.append(image_model.upload_image.url)
+
+    return file_links
 
 
 def check_espiriation_status(image):
@@ -30,14 +68,12 @@ def check_espiriation_status(image):
 
 
 class AddImageView(APIView):
-    # permission/authentication
     authentication_classes = [SessionAuthentication, BasicAuthentication]
     permission_classes = [IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
         file_links = []
 
-        # getting account tier
         try:
             account_tier = request.user.user.account_type
         except ImagexAccount.DoesNotExist:
@@ -46,70 +82,28 @@ class AddImageView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # getting serializer object
         serializer = ImageModelSerializer(data=request.data)
         if not serializer.is_valid():
             return JsonResponse(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         title = serializer.validated_data["title"]
-        # adding author
+
         author = request.user.user
         serializer.validated_data["author"] = author
 
-        # activites depend on account tier:
-        # 1.orginal link
         if account_tier.orginal_image_link:
             serializer.save()
             file_links.append(serializer.instance.upload_image.url)
 
-        # 2. size compilation:
         uploaded_image = serializer.validated_data.get("upload_image")
         image = pilimage.open(uploaded_image)
 
-        expected_width = None
-        expected_height = None
         original_width, original_height = image.size
         image_sizes = account_tier.image_size.all()
-        format = image.format
 
-        for size in image_sizes:
-            if size.width:
-                expected_width = size.width
-            if size.height:
-                expected_height = size.height
-
-            if expected_height and expected_width:
-                resized_img = image.resize(
-                    (expected_width, expected_height), pilimage.LANCZOS
-                )
-
-            elif expected_height:
-                new_width = int(original_width * (expected_height / original_height))
-                resized_img = image.resize(
-                    (new_width, expected_height), pilimage.LANCZOS
-                )
-
-            elif expected_width:
-                new_height = int(original_height * (expected_width / original_width))
-                resized_img = image.resize(
-                    (expected_width, new_height), pilimage.LANCZOS
-                )
-
-            output_stream = BytesIO()
-            resized_img.save(output_stream, format=format)
-            image_file = InMemoryUploadedFile(
-                output_stream,
-                None,
-                "resized_image.jpg",
-                f"image/{format.lower()}",
-                output_stream.tell(),
-                None,
-            )
-
-            image_model = ImageModel(
-                title=title, author=author, upload_image=image_file
-            )
-            image_model.save()
-            file_links.append(image_model.upload_image.url)
+        resized_links = generate_links(
+            image_sizes, image, original_width, original_height, title, author
+        )
+        file_links.extend(resized_links)
 
         data = {"file_links": file_links}
         return JsonResponse(data, status=status.HTTP_201_CREATED)

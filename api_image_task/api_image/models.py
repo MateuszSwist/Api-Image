@@ -8,7 +8,7 @@ class ThumbnailDimentions(models.Model):
     width = models.IntegerField(null=True, blank=True)
 
     def __str__(self):
-        return f"Height:{self.height}, width:{self.width}."
+        return f"Height:{self.height} x width:{self.width}."
 
 
 class AccountTier(models.Model):
@@ -38,7 +38,7 @@ class ImageModel(models.Model):
     upload_image = models.ImageField()
 
     def __str__(self):
-        return f" Image title: {self.title} by {self.author} added at {self.add_time}."
+        return f" Image title: {self.title} by {self.author.user}"
 
 
 class ExpiringLinks(models.Model):

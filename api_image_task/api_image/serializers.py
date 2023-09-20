@@ -1,6 +1,6 @@
+from PIL import Image as pilimage
 from rest_framework import serializers
 from .models import ImageModel, ExpiringLinks
-from PIL import Image as pilimage
 
 
 class ImageModelSerializer(serializers.ModelSerializer):
@@ -42,3 +42,10 @@ class ExpiringLinksSerializer(serializers.ModelSerializer):
             return serializers.ValidationError(
                 {"image": "Image on this adress does not exist"}
             )
+
+    def validate_time_to_expire(self, value):
+        if value < 300 or value > 30000:
+            raise serializers.ValidationError(
+                "Time to expire must be between 300 and 30000 seconds."
+            )
+        return value
