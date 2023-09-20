@@ -6,6 +6,7 @@ from PIL import Image as pilimage
 from django.utils import timezone
 from django.http import JsonResponse, FileResponse
 from django.core.files.uploadedfile import InMemoryUploadedFile
+from django.shortcuts import get_object_or_404
 
 from rest_framework.views import APIView
 from rest_framework.authentication import SessionAuthentication, BasicAuthentication
@@ -55,7 +56,7 @@ def generate_links(
     return file_links
 
 
-def check_espiriation_status(image):
+def check_expiriation_status(image):
     current_time = timezone.now()
     time_added = image.add_time
     time_to_expire_secounds = image.time_to_expire
@@ -89,7 +90,7 @@ class AddImageView(APIView):
 
         author = request.user.user
         serializer.validated_data["author"] = author
-
+        # create link if can have original link
         if account_tier.orginal_image_link:
             serializer.save()
             file_links.append(serializer.instance.upload_image.url)
@@ -99,7 +100,7 @@ class AddImageView(APIView):
 
         original_width, original_height = image.size
         image_sizes = account_tier.image_size.all()
-
+        # create all available sizes of image links
         resized_links = generate_links(
             image_sizes, image, original_width, original_height, title, author
         )
@@ -127,13 +128,14 @@ class UserImagesView(APIView):
 
     def get(self, request):
         user = self.request.user.user
-        try:
-            images = ImageModel.objects.filter(author=user)
+        images = ImageModel.objects.filter(author=user)
+
+        if images.exists():
             serializer = ImageModelSerializer(images, many=True)
             return JsonResponse({"data": serializer.data}, status=status.HTTP_200_OK)
-        except ImageModel.DoesNotExist:
+        else:
             return JsonResponse(
-                {"message": f"Not found any images of {self.user}"},
+                {"message": f"Not found any images of {user}"},
                 status=status.HTTP_404_NOT_FOUND,
             )
 
@@ -145,38 +147,36 @@ class AddLinkToEspiringLinksView(APIView):
     def post(self, request):
         user = self.request.user.user
         serializer = ExpiringLinksSerializer(data=request.data)
-        if not serializer.is_valid():
-            return JsonResponse(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        second_to_expire = serializer.validated_data["time_to_expire"]
-        image_pk = serializer.validated_data["image"]
-        random_string = "".join(
-            secrets.choice(string.ascii_letters + string.digits) for _ in range(10)
-        )
-        link = f"time-link/{random_string}"
-        serializer.save(owner=user, expiring_link=link, image=image_pk)
 
-        data = {
-            "second to expire": second_to_expire,
-            "expiring link": link,
-        }
-        return JsonResponse(data, status=status.HTTP_201_CREATED)
+        if serializer.is_valid():
+            second_to_expire = serializer.validated_data["time_to_expire"]
+            image_pk = serializer.validated_data["image"]
+            random_string = "".join(
+                secrets.choice(string.ascii_letters + string.digits) for _ in range(10)
+            )
+            link = f"time-link/{random_string}"
+
+            serializer.save(owner=user, expiring_link=link, image=image_pk)
+
+            data = {
+                "second to expire": second_to_expire,
+                "expiring link": link,
+            }
+            return JsonResponse(data, status=status.HTTP_201_CREATED)
+        else:
+            return JsonResponse(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class LoadExpiringLinkView(APIView):
     def get(self, request, expiring_link):
-        try:
-            expiring_link = "time-link/" + expiring_link
-            link = ExpiringLinks.objects.get(expiring_link=expiring_link)
+        expiring_link = f"time-link/{expiring_link}"
+        link = get_object_or_404(ExpiringLinks, expiring_link=expiring_link)
 
-        except ExpiringLinks.DoesNotExist:
-            return JsonResponse(
-                {"message": "Image not found"},
-                status=status.HTTP_404_NOT_FOUND,
-            )
-
-        if check_espiriation_status(link):
-            image = link.image
-            image_file = image.upload_image.path
+        if check_expiriation_status(link):
+            image_file = link.image.upload_image.path
             return FileResponse(open(image_file, "rb"))
         else:
-            return JsonResponse({"message": "Sorry, Link already expired"})
+            return JsonResponse(
+                {"message": "Sorry, Link already expired"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )

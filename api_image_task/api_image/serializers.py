@@ -9,12 +9,24 @@ class ImageModelSerializer(serializers.ModelSerializer):
         fields = ["title", "upload_image"]
 
     def validate_upload_image(self, value):
-        image = pilimage.open(value)
-        if image.format.lower() not in ["png", "jpeg"]:
+        try:
+            image = pilimage.open(value)
+            format = image.format.lower()
+        except Exception as e:
+            raise serializers.ValidationError(
+                {"upload_image": f"Unable to open the image: {str(e)}"}
+            )
+
+        if format not in ["png", "jpeg"]:
             raise serializers.ValidationError(
                 {"upload_image": "Unsupported image format"}
             )
+
         return value
+
+
+from rest_framework import serializers
+from .models import ExpiringLinks, ImageModel
 
 
 class ExpiringLinksSerializer(serializers.ModelSerializer):
@@ -25,26 +37,24 @@ class ExpiringLinksSerializer(serializers.ModelSerializer):
         fields = ["image", "time_to_expire"]
 
     def validate_image(self, value):
-        print("jestem w validatorze")
         try:
-            image = value.split("media/")[1]
-            if image.endswith("/"):
-                image = image[:-1]
-                print("jestem po czyszczeniu linku", image)
+            image = value.split("media/")[1].rstrip("/")
         except IndexError:
-            raise ValueError({"image link": "Wrong link, please copy your image link"})
-
-        try:
-            image_pk = ImageModel.objects.get(upload_image=image)
-            return image_pk
-
-        except ImageModel.DoesNotExist:
-            return serializers.ValidationError(
-                {"image": "Image on this adress does not exist"}
+            raise serializers.ValidationError(
+                {"image link": "Wrong link, please copy your image link"}
             )
 
+        try:
+            image_pk = ImageModel.objects.get(upload_image__iendswith=image)
+        except ImageModel.DoesNotExist:
+            raise serializers.ValidationError(
+                {"image": "Image on this address does not exist"}
+            )
+
+        return image_pk
+
     def validate_time_to_expire(self, value):
-        if value < 300 or value > 30000:
+        if not 300 <= value <= 30000:
             raise serializers.ValidationError(
                 "Time to expire must be between 300 and 30000 seconds."
             )
