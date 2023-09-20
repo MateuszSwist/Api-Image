@@ -42,7 +42,3 @@ class ExpiringLinksSerializer(serializers.ModelSerializer):
             return serializers.ValidationError(
                 {"image": "Image on this adress does not exist"}
             )
-
-
-class LoadTimeExpriginLinks(serializers.ModelSerializer):
-    model = ExpiringLinks

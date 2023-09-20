@@ -1,21 +1,32 @@
 import string
-import secrets
 from rest_framework.views import APIView
+import secrets
+from django.utils import timezone
 from rest_framework.authentication import SessionAuthentication, BasicAuthentication
 from rest_framework.permissions import IsAuthenticated
-from .models import ImagexAccount, ImageModel
+from .models import ImagexAccount, ImageModel, ExpiringLinks
 from django.http import JsonResponse
 from rest_framework import status
-from rest_framework.response import Response
 from .serializers import (
     ImageModelSerializer,
     ExpiringLinksSerializer,
-    LoadTimeExpriginLinks,
 )
 from PIL import Image as pilimage
 from io import BytesIO
 from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.http import FileResponse
+
+
+def check_espiriation_status(image):
+    current_time = timezone.now()
+    time_added = image.add_time
+    time_to_expire_secounds = image.time_to_expire
+    time_difference = current_time - time_added
+
+    if time_difference.total_seconds() > time_to_expire_secounds:
+        return False
+    else:
+        return True
 
 
 class AddImageView(APIView):
@@ -125,7 +136,7 @@ class UserImagesView(APIView):
         try:
             images = ImageModel.objects.filter(author=user)
             serializer = ImageModelSerializer(images, many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            return JsonResponse({"data": serializer.data}, status=status.HTTP_200_OK)
         except ImageModel.DoesNotExist:
             return JsonResponse(
                 {"message": f"Not found any images of {self.user}"},
@@ -157,13 +168,21 @@ class AddLinkToEspiringLinksView(APIView):
         return JsonResponse(data, status=status.HTTP_201_CREATED)
 
 
-# class LoadExpiringLinkView(APIView):
+class LoadExpiringLinkView(APIView):
+    def get(self, request, expiring_link):
+        try:
+            expiring_link = "time-link/" + expiring_link
+            link = ExpiringLinks.objects.get(expiring_link=expiring_link)
 
-#     def get(self, request):
-#         serializer = LoadTimeExpriginLinks
-#         if not serializer.is_valid():
-#             return JsonResponse(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-#         try:
-#             image = ImageModel.objects.get(upload_image__image_name)
-#             image_file = image.upload_image.path
-#             return FileResponse(open(image_file, "rb"))
+        except ExpiringLinks.DoesNotExist:
+            return JsonResponse(
+                {"message": "Image not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if check_espiriation_status(link):
+            image = link.image
+            image_file = image.upload_image.path
+            return FileResponse(open(image_file, "rb"))
+        else:
+            return JsonResponse({"message": "Sorry, Link already expired"})

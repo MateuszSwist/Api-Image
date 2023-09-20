@@ -43,7 +43,9 @@ class ImageModel(models.Model):
 
 class ExpiringLinks(models.Model):
     add_time = models.DateTimeField(auto_now_add=True)
-    image = models.ForeignKey(ImageModel, on_delete=models.CASCADE)
+    image = models.ForeignKey(
+        ImageModel, on_delete=models.CASCADE, related_name="orginal"
+    )
     time_to_expire = models.IntegerField(
         validators=[
             MinValueValidator(300, message="Min sec value is 300"),
