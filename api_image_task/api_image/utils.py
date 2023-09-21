@@ -3,6 +3,7 @@ from django.utils import timezone
 import string
 import secrets
 
+
 def change_image_size(pillow_image, height=None, width=None):
     original_width, original_height = pillow_image.size
     if width and height:
@@ -17,6 +18,7 @@ def change_image_size(pillow_image, height=None, width=None):
     resized_img = pillow_image.resize(expected_size, pilimage.LANCZOS)
     return resized_img
 
+
 def check_expiriation_status(image):
     current_time = timezone.now()
     time_added = image.add_time
@@ -26,18 +28,22 @@ def check_expiriation_status(image):
     return time_difference.total_seconds() > time_to_expire_secounds
 
 
-def random_image_name(size=None, title=None, format_name=None):
-    name = ''
+def create_random_name(size=None, title=None, format_name=None):
+    name = ""
     if title:
         name += title
     if size:
         if size.height:
             name += str(size.height)
         if size.width:
-            name + 'x' + str(size.width)    
+            name + "x" + str(size.width)
 
     random_string = "".join(
-                secrets.choice(string.ascii_letters + string.digits) for _ in range(10)
-            )
-    file_format = str(format_name).lower()
-    return f'{random_string}{name}.{file_format}'
+        secrets.choice(string.ascii_letters + string.digits) for _ in range(10)
+    )
+
+    if format_name:
+        file_format = str(format_name).lower()
+    print("file_format:", file_format)
+
+    return f"{random_string}{name}.{file_format}"

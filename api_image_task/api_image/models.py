@@ -52,9 +52,7 @@ class ExpiringLinks(models.Model):
             MaxValueValidator(30000, message="Max sec value is 30000"),
         ]
     )
-    owner = models.ForeignKey(
-        ClientAccount, on_delete=models.CASCADE, related_name="owner"
-    )
+
     expiring_link = models.CharField(max_length=256, null=True, blank=True)
 
     def __str__(self):
