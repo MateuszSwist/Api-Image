@@ -3,11 +3,11 @@ import secrets
 
 from PIL import Image as pilimage
 
-
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.http import JsonResponse, FileResponse
-
+from io import BytesIO
 from django.shortcuts import get_object_or_404
-
+from django.core.files import File
 from rest_framework.views import APIView
 from rest_framework.generics import ListAPIView
 from rest_framework.authentication import SessionAuthentication, BasicAuthentication
@@ -16,48 +16,46 @@ from rest_framework import status
 
 from .models import UploadedImage, ExpiringLinks
 from .serializers import UploadedImageSerializer, ExpiringLinksSerializer
-from .utils import generate_links, check_expiriation_status
-
+from .utils import check_expiriation_status, change_image_size, random_image_name
+import uuid
 
 class AddImageView(APIView):
     authentication_classes = [SessionAuthentication, BasicAuthentication]
     permission_classes = [IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
-        file_links = []
-
+        
         serializer = UploadedImageSerializer(data=request.data)
         if not serializer.is_valid():
             return JsonResponse(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-        uploaded_image = serializer.validated_data.get("upload_image")
-        image = pilimage.open(uploaded_image)
-        format = image.format.lower()
-
-        if format not in ["png", "jpeg"]:
-            return JsonResponse(
-                {"upload_image": "Unsupported image format"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        title = serializer.validated_data["title"]
+        
+        file_links = []
         author = request.user.client
-        serializer.validated_data["author"] = author
-        # create link if can have original link
-        account_tier = request.user.client.account_type
-        if account_tier.orginal_image_acces:
+        serializer.validated_data['author'] = author
+        uploaded_image = serializer.validated_data.get("upload_image")        
+        title = serializer.validated_data.get("title")        
+        pillow_image = pilimage.open(uploaded_image)
+        format = pillow_image.format
+        image_sizes = author.account_type.image_sizes.all()
+
+        if author.account_type.orginal_image_acces:
             serializer.save()
+            file_links.append({'orginal': serializer.instance.upload_image.url})
+
+        for size in image_sizes:
+            resized_pillow_img = change_image_size(pillow_image=pillow_image, height=size.height, width=size.width)
+            buffer = BytesIO()
+            resized_pillow_img.save(buffer, format=format)
+            random_name = random_image_name(size=size, title=title, format_name=format)
+            serializer.instance.upload_image.save(random_name, buffer)
+            serializer.instance.save()
             file_links.append(serializer.instance.upload_image.url)
-
-        original_width, original_height = image.size
-        image_sizes = account_tier.image_sizes.all()
-        # create all available sizes of image links
-        resized_links = generate_links(
-            image_sizes, image, original_width, original_height, title, author
-        )
-        file_links.extend(resized_links)
-
-        data = {"file_links": file_links}
+    
+        
+        data = {
+            "title": title,
+            "urls": file_links
+            }
         return JsonResponse(data, status=status.HTTP_201_CREATED)
 
 class UserImagesView(ListAPIView):

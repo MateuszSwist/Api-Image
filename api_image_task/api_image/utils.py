@@ -1,47 +1,21 @@
-from django.core.files.uploadedfile import InMemoryUploadedFile
 from PIL import Image as pilimage
-from io import BytesIO
-from .models import UploadedImage
 from django.utils import timezone
+import string
+import secrets
 
+def change_image_size(pillow_image, height=None, width=None):
+    original_width, original_height = pillow_image.size
+    if width and height:
+        expected_size = (width, height)
+    elif width:
+        new_height = int(original_height * (width / original_width))
+        expected_size = (width, new_height)
+    elif height:
+        new_width = int(original_width * (height / original_height))
+        expected_size = (new_width, height)
 
-def generate_links(
-    image_sizes, image, original_width, original_height, title, author):
-    file_links = []
-    format = image.format
-    for size in image_sizes:
-        if size.width and size.height:
-            expected_size = (size.width, size.height)
-        elif size.width:
-            new_height = int(original_height * (size.width / original_width))
-            expected_size = (size.width, new_height)
-        elif size.height:
-            new_width = int(original_width * (size.height / original_height))
-            expected_size = (new_width, size.height)
-        else:
-            expected_size = (original_width, original_height)
-
-        resized_img = image.resize(expected_size, pilimage.LANCZOS)
-
-        output_stream = BytesIO()
-        resized_img.save(output_stream, format=format)
-
-        image_file = InMemoryUploadedFile(
-            output_stream,
-            None,
-            "resized_image.jpg",
-            f"image/{format.lower()}",
-            output_stream.tell(),
-            None,
-        )
-
-        image_model = UploadedImage(title=title, author=author, upload_image=image_file)
-
-        image_model.save()
-        file_links.append(image_model.upload_image.url)
-
-    return file_links
-
+    resized_img = pillow_image.resize(expected_size, pilimage.LANCZOS)
+    return resized_img
 
 def check_expiriation_status(image):
     current_time = timezone.now()
@@ -50,3 +24,20 @@ def check_expiriation_status(image):
     time_difference = current_time - time_added
 
     return time_difference.total_seconds() > time_to_expire_secounds
+
+
+def random_image_name(size=None, title=None, format_name=None):
+    name = ''
+    if title:
+        name += title
+    if size:
+        if size.height:
+            name += str(size.height)
+        if size.width:
+            name + 'x' + str(size.width)    
+
+    random_string = "".join(
+                secrets.choice(string.ascii_letters + string.digits) for _ in range(10)
+            )
+    file_format = str(format_name).lower()
+    return f'{random_string}{name}.{file_format}'

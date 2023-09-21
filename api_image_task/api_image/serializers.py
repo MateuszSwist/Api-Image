@@ -1,12 +1,21 @@
 from PIL import Image as pilimage
 from rest_framework import serializers
 from .models import UploadedImage, ExpiringLinks
-
+from django.http import JsonResponse
+from rest_framework import status
 
 class UploadedImageSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = UploadedImage
         fields = ["title", "upload_image"]
+
+    def format_validate_upload_image(self, value):
+
+        image = pilimage.open(value)
+        format = image.format.lower()
+        if format not in ["png", "jpeg"]:
+            raise serializers.ValidationError("Unsupported image format")
 
 
 class ExpiringLinksSerializer(serializers.ModelSerializer):
