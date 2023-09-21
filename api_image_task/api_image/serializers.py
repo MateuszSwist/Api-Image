@@ -1,32 +1,12 @@
 from PIL import Image as pilimage
 from rest_framework import serializers
-from .models import ImageModel, ExpiringLinks
+from .models import UploadedImage, ExpiringLinks
 
 
-class ImageModelSerializer(serializers.ModelSerializer):
+class UploadedImageSerializer(serializers.ModelSerializer):
     class Meta:
-        model = ImageModel
+        model = UploadedImage
         fields = ["title", "upload_image"]
-
-    def validate_upload_image(self, value):
-        try:
-            image = pilimage.open(value)
-            format = image.format.lower()
-        except Exception as e:
-            raise serializers.ValidationError(
-                {"upload_image": f"Unable to open the image: {str(e)}"}
-            )
-
-        if format not in ["png", "jpeg"]:
-            raise serializers.ValidationError(
-                {"upload_image": "Unsupported image format"}
-            )
-
-        return value
-
-
-from rest_framework import serializers
-from .models import ExpiringLinks, ImageModel
 
 
 class ExpiringLinksSerializer(serializers.ModelSerializer):
@@ -45,8 +25,8 @@ class ExpiringLinksSerializer(serializers.ModelSerializer):
             )
 
         try:
-            image_pk = ImageModel.objects.get(upload_image__iendswith=image)
-        except ImageModel.DoesNotExist:
+            image_pk = UploadedImage.objects.get(upload_image__iendswith=image)
+        except UploadedImage.DoesNotExist:
             raise serializers.ValidationError(
                 {"image": "Image on this address does not exist"}
             )

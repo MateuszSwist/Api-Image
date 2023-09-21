@@ -1,16 +1,16 @@
 from django.contrib import admin
 from django.utils import timezone
 from .models import (
-    ThumbnailDimentions,
+    ThumbnailDimensions,
     AccountTier,
-    ImagexAccount,
-    ImageModel,
+    ClientAccount,
+    UploadedImage,
     ExpiringLinks,
 )
 
 
-@admin.register(ThumbnailDimentions)
-class ThumbnailDimentionsAdmin(admin.ModelAdmin):
+@admin.register(ThumbnailDimensions)
+class ThumbnailDimensionsAdmin(admin.ModelAdmin):
     pass
 
 
@@ -18,22 +18,22 @@ class ThumbnailDimentionsAdmin(admin.ModelAdmin):
 class AccountTierAdmin(admin.ModelAdmin):
     list_display = [
         "name",
-        "orginal_image_link",
-        "time_limited_link",
+        "orginal_image_acces",
+        "time_limited_link_acces",
         "display_image_sizes",
     ]
 
     def display_image_sizes(self, obj):
-        return ", ".join([str(size) for size in obj.image_size.all()])
+        return ", ".join([str(size) for size in obj.image_sizes.all()])
 
 
-@admin.register(ImagexAccount)
+@admin.register(ClientAccount)
 class ImagexAccountAdmin(admin.ModelAdmin):
     list_display = ["user", "account_type"]
 
 
-@admin.register(ImageModel)
-class ImageModelAdmin(admin.ModelAdmin):
+@admin.register(UploadedImage)
+class UploadedImageAdmin(admin.ModelAdmin):
     list_display = ["add_time", "title", "author", "upload_image"]
 
 

@@ -1,15 +1,15 @@
 from django.urls import path
 from .views import (
     AddImageView,
-    ImageView,
     UserImagesView,
     AddLinkToEspiringLinksView,
     LoadExpiringLinkView,
 )
+from django.conf.urls.static import static
+from django.conf import settings
 
 urlpatterns = [
     path("add-image/", AddImageView.as_view(), name="add-image"),
-    path("media/<str:image_name>/", ImageView.as_view(), name="image-detail"),
     path("user-images/", UserImagesView.as_view(), name="user-images"),
     path(
         "add-expiring-link/",
@@ -21,4 +21,4 @@ urlpatterns = [
         LoadExpiringLinkView.as_view(),
         name="expiring-link",
     ),
-]
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

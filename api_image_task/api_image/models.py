@@ -3,7 +3,7 @@ from django.contrib.auth.models import User
 from django.core.validators import MinValueValidator, MaxValueValidator
 
 
-class ThumbnailDimentions(models.Model):
+class ThumbnailDimensions(models.Model):
     height = models.IntegerField()
     width = models.IntegerField(null=True, blank=True)
 
@@ -13,28 +13,28 @@ class ThumbnailDimentions(models.Model):
 
 class AccountTier(models.Model):
     name = models.CharField(max_length=64)
-    orginal_image_link = models.BooleanField(default=False)
-    time_limited_link = models.BooleanField(default=False)
-    image_size = models.ManyToManyField(ThumbnailDimentions)
+    orginal_image_acces = models.BooleanField(default=False)
+    time_limited_link_acces = models.BooleanField(default=False)
+    image_sizes = models.ManyToManyField(ThumbnailDimensions)
 
     def __str__(self):
         return self.name
 
 
-class ImagexAccount(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="user")
+class ClientAccount(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="client")
     account_type = models.OneToOneField(
-        AccountTier, on_delete=models.DO_NOTHING, related_name="account_type"
+        AccountTier, on_delete=models.CASCADE, related_name="account_type"
     )
 
     def __str__(self):
         return f"Owner: {self.user} Account type: {self.account_type}."
 
 
-class ImageModel(models.Model):
+class UploadedImage(models.Model):
     add_time = models.DateTimeField(auto_now_add=True)
     title = models.CharField(max_length=128)
-    author = models.ForeignKey(ImagexAccount, on_delete=models.CASCADE)
+    author = models.ForeignKey(ClientAccount, on_delete=models.CASCADE)
     upload_image = models.ImageField()
 
     def __str__(self):
@@ -44,7 +44,7 @@ class ImageModel(models.Model):
 class ExpiringLinks(models.Model):
     add_time = models.DateTimeField(auto_now_add=True)
     image = models.ForeignKey(
-        ImageModel, on_delete=models.CASCADE, related_name="orginal"
+        UploadedImage, on_delete=models.CASCADE, related_name="orginal"
     )
     time_to_expire = models.IntegerField(
         validators=[
@@ -53,7 +53,7 @@ class ExpiringLinks(models.Model):
         ]
     )
     owner = models.ForeignKey(
-        ImagexAccount, on_delete=models.CASCADE, related_name="owner"
+        ClientAccount, on_delete=models.CASCADE, related_name="owner"
     )
     expiring_link = models.CharField(max_length=256, null=True, blank=True)
 
