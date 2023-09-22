@@ -15,7 +15,7 @@ class UploadedImageSerializer(serializers.ModelSerializer):
             if format not in ["png", "jpeg"]:
                 raise serializers.ValidationError("Unsupported image format")
         except pilimage.UnidentifiedImageError:
-            raise serializers.ValidationError("Invalid image format")
+            raise serializers.ValidationError()
 
         return value
 

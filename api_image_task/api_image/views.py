@@ -37,6 +37,9 @@ class AddImageView(APIView):
         image_sizes = author.account_type.image_sizes.all()
 
         if author.account_type.orginal_image_acces:
+            random_name = create_random_name(title=title, format_name=format)
+            uploaded_image.name = random_name
+
             serializer.save()
             file_links.append(
                 {
@@ -97,9 +100,12 @@ class AddRetriveExpiringLinks(APIView):
         uuid_str = str(shortuuid.uuid())
         url = reverse("time-expiring", args=[uuid_str])
         serializer.validated_data["expiring_link"] = uuid_str
+        secound_to_expire = serializer.validated_data["time_to_expire"]
         serializer.save()
 
-        return JsonResponse({"url": url}, status=status.HTTP_201_CREATED)
+        data = {"url": url, "secound_to_expire": secound_to_expire}
+
+        return JsonResponse(data, status=status.HTTP_201_CREATED)
 
     def get(self, request, link_name):
         link_object = get_object_or_404(ExpiringLinks, expiring_link=link_name)

@@ -9,7 +9,6 @@ from ..models import ThumbnailDimensions
 from ..utils import calculate_seconds_left, change_image_size, create_random_name
 
 
-
 class ChangeImageSizeTestCase(TestCase):
     def create_image(self, width=100, height=100):
         image = pilimage.new("RGB", (width, height))
@@ -112,6 +111,7 @@ class CrateRandomNameTestCase(TestCase):
         parts = random_name.split("-")
         random_string = parts[0]
         self.assertEqual(len(random_string), 10)
+
 
 class CalculateSecondsLeftTestCase(TestCase):
     def test_seconds_left_when_still_valid(self):
