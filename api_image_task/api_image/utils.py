@@ -19,15 +19,6 @@ def change_image_size(pillow_image, height=None, width=None):
     return resized_img
 
 
-def check_expiriation_status(image):
-    current_time = timezone.now()
-    time_added = image.add_time
-    time_to_expire_secounds = image.time_to_expire
-    time_difference = current_time - time_added
-
-    return time_difference.total_seconds() > time_to_expire_secounds
-
-
 def create_random_name(size=None, title=None, format_name=None):
     name = ""
     if title:
@@ -38,12 +29,20 @@ def create_random_name(size=None, title=None, format_name=None):
         if size.width:
             name + "x" + str(size.width)
 
+    if format_name:
+        file_format = str(format_name).lower()
+
     random_string = "".join(
         secrets.choice(string.ascii_letters + string.digits) for _ in range(10)
     )
 
-    if format_name:
-        file_format = str(format_name).lower()
-    print("file_format:", file_format)
+    return f"{random_string}-{name}.{file_format}"
 
-    return f"{random_string}{name}.{file_format}"
+
+def calculate_seconds_left(add_time, time_to_expire):
+    current_time = timezone.now()
+    time_difference = current_time - add_time
+    seconds_difference = int(time_difference.total_seconds())
+    secounds_left = time_to_expire - seconds_difference
+
+    return max(secounds_left, 0)

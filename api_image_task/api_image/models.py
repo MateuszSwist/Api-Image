@@ -1,14 +1,26 @@
 from django.db import models
+from django.core.exceptions import ValidationError
 from django.contrib.auth.models import User
-from django.core.validators import MinValueValidator, MaxValueValidator
+
+
+from .utils import calculate_seconds_left
 
 
 class ThumbnailDimensions(models.Model):
-    height = models.IntegerField()
+    height = models.IntegerField(null=True, blank=True)
     width = models.IntegerField(null=True, blank=True)
 
+    def clean(self):
+        if self.height is None and self.width is None:
+            raise ValidationError("At least one thumbnail dimension must be provided.")
+
     def __str__(self):
-        return f"Height:{self.height} x width:{self.width}."
+        if self.height is None:
+            return f"any x {self.width}"
+        elif self.width is None:
+            return f"{self.height} x any"
+        else:
+            return f"{self.height}x{self.width}"
 
 
 class AccountTier(models.Model):
@@ -34,7 +46,9 @@ class ClientAccount(models.Model):
 class UploadedImage(models.Model):
     add_time = models.DateTimeField(auto_now_add=True)
     title = models.CharField(max_length=128)
-    author = models.ForeignKey(ClientAccount, on_delete=models.CASCADE)
+    author = models.ForeignKey(
+        ClientAccount, on_delete=models.CASCADE, related_name="client_account"
+    )
     upload_image = models.ImageField()
 
     def __str__(self):
@@ -43,17 +57,17 @@ class UploadedImage(models.Model):
 
 class ExpiringLinks(models.Model):
     add_time = models.DateTimeField(auto_now_add=True)
-    image = models.ForeignKey(
-        UploadedImage, on_delete=models.CASCADE, related_name="orginal"
+    image_id = models.ForeignKey(
+        UploadedImage, on_delete=models.CASCADE, related_name="original"
     )
-    time_to_expire = models.IntegerField(
-        validators=[
-            MinValueValidator(300, message="Min sec value is 300"),
-            MaxValueValidator(30000, message="Max sec value is 30000"),
-        ]
-    )
+    time_to_expire = models.IntegerField()
 
     expiring_link = models.CharField(max_length=256, null=True, blank=True)
+
+    def secounds_left(self):
+        return calculate_seconds_left(
+            add_time=self.add_time, time_to_expire=self.time_to_expire
+        )
 
     def __str__(self):
         return f"Line expire in: {self.time_to_expire} sec, owner: {self.owner}."

@@ -1,5 +1,4 @@
 from django.contrib import admin
-from django.utils import timezone
 from .models import (
     ThumbnailDimensions,
     AccountTier,
@@ -7,6 +6,7 @@ from .models import (
     UploadedImage,
     ExpiringLinks,
 )
+from .utils import calculate_seconds_left
 
 
 @admin.register(ThumbnailDimensions)
@@ -39,15 +39,9 @@ class UploadedImageAdmin(admin.ModelAdmin):
 
 @admin.register(ExpiringLinks)
 class ExpiringLinksAdmin(admin.ModelAdmin):
-    list_display = ["add_time", "secounds_left", "expiring_link", "image"]
+    list_display = ["add_time", "secounds_left", "expiring_link", "image_id"]
 
-    def secounds_left(self, obj):
-        current_time = timezone.now()
-        time_added = obj.add_time
-        time_to_expire_secounds = obj.time_to_expire
-        time_difference = current_time - time_added
-        secounds_left = time_to_expire_secounds - int(time_difference.total_seconds())
-        if secounds_left > 0:
-            return secounds_left
-        else:
-            return 0
+    def seconds_left(self, obj):
+        return calculate_seconds_left(
+            add_time=obj.add_time, time_to_expire=obj.time_to_expire
+        )

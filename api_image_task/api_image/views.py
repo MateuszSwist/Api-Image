@@ -1,29 +1,28 @@
-import string
-import secrets
-
+import shortuuid
 from PIL import Image as pilimage
-
-from django.http import JsonResponse, FileResponse
 from io import BytesIO
-
-from django.core.files import File
+from django.http import JsonResponse, FileResponse
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.urls import reverse
+from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
-
-from rest_framework.viewsets import ModelViewSet
-from rest_framework.authentication import SessionAuthentication, BasicAuthentication
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
+from rest_framework.generics import RetrieveAPIView, ListAPIView
 from rest_framework import status
 
 from .models import UploadedImage, ExpiringLinks
-from .serializers import UploadedImageSerializer
-from .utils import check_expiriation_status, change_image_size, create_random_name
+from .serializers import (
+    UploadedImageSerializer,
+    AddRetriveExpiringLinksSerializer,
+    RetriveListImageSerializer,
+)
+from .utils import calculate_seconds_left, change_image_size, create_random_name
 
 
 class AddImageView(APIView):
-    authentication_classes = [SessionAuthentication, BasicAuthentication]
     permission_classes = [IsAuthenticated]
 
-    def post(self, request, *args, **kwargs):
+    def post(self, request):
         serializer = UploadedImageSerializer(data=request.data)
         if not serializer.is_valid():
             return JsonResponse(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -41,7 +40,8 @@ class AddImageView(APIView):
             serializer.save()
             file_links.append(
                 {
-                    "orginal": serializer.instance.upload_image.url,
+                    "id": serializer.instance.id,
+                    "original url": serializer.instance.upload_image.url,
                 }
             )
 
@@ -52,66 +52,70 @@ class AddImageView(APIView):
             buffer = BytesIO()
             resized_pillow_img.save(buffer, format=format)
             random_name = create_random_name(size=size, title=title, format_name=format)
-            serializer.instance.upload_image.save(random_name, buffer)
-            serializer.instance.save()
-            file_links.append(serializer.instance.upload_image.url)
+            new_image_instance = UploadedImage(
+                upload_image=SimpleUploadedFile(random_name, buffer.getvalue()),
+                author=author,
+                title=title,
+            )
+            new_image_instance.save()
+            file_links.append(
+                {
+                    "id": new_image_instance.id,
+                    "url": new_image_instance.upload_image.url,
+                }
+            )
 
         data = {"title": title, "urls": file_links}
         return JsonResponse(data, status=status.HTTP_201_CREATED)
 
 
-class UserImagesView(ModelViewSet):
-    authentication_classes = [SessionAuthentication, BasicAuthentication]
-    permission_class = [IsAuthenticated]
-    serializer_class = UploadedImageSerializer
+class UserImageView(RetrieveAPIView):
+    serializer_class = RetriveListImageSerializer
 
     def get_queryset(self):
-        user = self.request.user.client
-        return UploadedImage.objects.filter(author=user)
+        image_id = self.kwargs["pk"]
+        return UploadedImage.objects.filter(id=image_id)
 
 
-# class AddRetriveExpiringLinkView
+class UserImagesListView(ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = RetriveListImageSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        return UploadedImage.objects.filter(author=user.id)
 
 
+class AddRetriveExpiringLinks(APIView):
+    permission_classes = [IsAuthenticatedOrReadOnly]
 
+    def post(self, request):
+        serializer = AddRetriveExpiringLinksSerializer(data=request.data)
+        if not serializer.is_valid():
+            return JsonResponse(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-# class AddExpiringLinkView(APIView):
-#     authentication_classes = [SessionAuthentication, BasicAuthentication]
-#     permission_classes = [IsAuthenticated]
+        uuid_str = str(shortuuid.uuid())
+        url = reverse("time-expiring", args=[uuid_str])
+        serializer.validated_data["expiring_link"] = uuid_str
+        serializer.save()
 
-#     def post(self, request):
-#         user = self.request.user.user
-#         serializer = ExpiringLinksSerializer(data=request.data)
+        return JsonResponse({"url": url}, status=status.HTTP_201_CREATED)
 
-#         if serializer.is_valid():
-#             second_to_expire = serializer.validated_data["time_to_expire"]
-#             image_pk = serializer.validated_data["image"]
-#             random_string = "".join(
-#                 secrets.choice(string.ascii_letters + string.digits) for _ in range(10)
-#             )
-#             link = f"time-link/{random_string}"
+    def get(self, request, link_name):
+        link_object = get_object_or_404(ExpiringLinks, expiring_link=link_name)
+        time_left = calculate_seconds_left(
+            add_time=link_object.add_time, time_to_expire=link_object.time_to_expire
+        )
 
-#             serializer.save(owner=user, expiring_link=link, image=image_pk)
+        if time_left != 0:
+            image_id = link_object.image_id.id
 
-#             data = {
-#                 "second to expire": second_to_expire,
-#                 "expiring link": link,
-#             }
-#             return JsonResponse(data, status=status.HTTP_201_CREATED)
-#         else:
-#             return JsonResponse(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            image_object = get_object_or_404(UploadedImage, id=image_id)
 
+            image_file = image_object.upload_image.path
+            return FileResponse(open(image_file, "rb"))
 
-# class LoadExpiringLinkView(APIView):
-#     def get(self, request, expiring_link):
-#         expiring_link = f"time-link/{expiring_link}"
-#         link = get_object_or_404(ExpiringLinks, expiring_link=expiring_link)
-
-#         if check_expiriation_status(link):
-#             image_file = link.image.upload_image.path
-#             return FileResponse(open(image_file, "rb"))
-#         else:
-#             return JsonResponse(
-#                 {"message": "Sorry, Link already expired"},
-#                 status=status.HTTP_400_BAD_REQUEST,
-#             )
+        else:
+            return JsonResponse(
+                {"link_status": "link already expired"}, status=status.HTTP_410_GONE
+            )
