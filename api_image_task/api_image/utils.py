@@ -1,11 +1,13 @@
-from PIL import Image as pilimage
-from django.utils import timezone
 import string
 import secrets
+from PIL import Image as pilimage
+from django.utils import timezone
 
 
 def change_image_size(pillow_image, height=None, width=None):
     original_width, original_height = pillow_image.size
+    expected_size = (original_width, original_height)
+
     if width and height:
         expected_size = (width, height)
     elif width:
@@ -21,13 +23,17 @@ def change_image_size(pillow_image, height=None, width=None):
 
 def create_random_name(size=None, title=None, format_name=None):
     name = ""
+    file_format = ""
+    random_string = ""
+
     if title:
         name += title
+
     if size:
         if size.height:
             name += str(size.height)
         if size.width:
-            name + "x" + str(size.width)
+            name += "x" + str(size.width)
 
     if format_name:
         file_format = str(format_name).lower()

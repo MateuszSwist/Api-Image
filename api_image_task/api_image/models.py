@@ -2,7 +2,6 @@ from django.db import models
 from django.core.exceptions import ValidationError
 from django.contrib.auth.models import User
 
-
 from .utils import calculate_seconds_left
 
 
@@ -14,11 +13,17 @@ class ThumbnailDimensions(models.Model):
         if self.height is None and self.width is None:
             raise ValidationError("At least one thumbnail dimension must be provided.")
 
+        if self.height is not None and self.height < 1:
+            raise ValidationError("Height must be greater than or equal to 1.")
+
+        if self.width is not None and self.width < 1:
+            raise ValidationError("Width must be greater than or equal to 1.")
+
     def __str__(self):
         if self.height is None:
-            return f"any x {self.width}"
+            return f"{self.width} x any"
         elif self.width is None:
-            return f"{self.height} x any"
+            return f"any x {self.height}"
         else:
             return f"{self.height}x{self.width}"
 
@@ -28,6 +33,10 @@ class AccountTier(models.Model):
     orginal_image_acces = models.BooleanField(default=False)
     time_limited_link_acces = models.BooleanField(default=False)
     image_sizes = models.ManyToManyField(ThumbnailDimensions)
+
+    def clean(self):
+        if not self.image_sizes.exists():
+            raise ValidationError("At least one image size must be selected.")
 
     def __str__(self):
         return self.name
@@ -40,7 +49,7 @@ class ClientAccount(models.Model):
     )
 
     def __str__(self):
-        return f"Owner: {self.user} Account type: {self.account_type}."
+        return f"Owner: {self.user} Account type: {self.account_type}"
 
 
 class UploadedImage(models.Model):
@@ -52,7 +61,7 @@ class UploadedImage(models.Model):
     upload_image = models.ImageField()
 
     def __str__(self):
-        return f" Image title: {self.title} by {self.author.user}"
+        return f"Image title: {self.title} by {self.author.user}"
 
 
 class ExpiringLinks(models.Model):
