@@ -93,6 +93,13 @@ class AddRetriveExpiringLinks(APIView):
     permission_classes = [IsAuthenticatedOrReadOnly]
 
     def post(self, request):
+        time_link_acces = request.user.client.account_type.time_limited_link_acces
+        if not time_link_acces:
+            return JsonResponse(
+                {"account_type": "Your account lacks sufficient permissions"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         serializer = AddRetriveExpiringLinksSerializer(data=request.data)
         if not serializer.is_valid():
             return JsonResponse(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

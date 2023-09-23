@@ -1,0 +1,53 @@
+[
+    {
+      "model": "api_image.thumbnaildimensions",
+      "pk": 1,
+      "fields": {
+        "height": 200,
+        "width": null
+      }
+    },
+    {
+      "model": "api_image.thumbnaildimensions",
+      "pk": 2,
+      "fields": {
+        "height": 400,
+        "width": null
+      }
+    },
+    {
+        "model": "api_image.accounttier",
+        "pk": 1,
+        "fields":{
+            "name": "Basic",
+            "orginal_image_acces": false,
+            "time_limited_link_acces": false,
+            "image_sizes": [1]
+
+        }
+    },
+    {
+        "model": "api_image.accounttier",
+        "pk": 2,
+        "fields":{
+            "name": "Premium",
+            "orginal_image_acces": true,
+            "time_limited_link_acces": false,
+            "image_sizes": [1,2]
+
+        }
+    },
+    {
+        "model": "api_image.accounttier",
+        "pk": 3,
+        "fields":{
+            "name": "Enterprise",
+            "orginal_image_acces": true,
+            "time_limited_link_acces": true,
+            "image_sizes": [1,2]
+
+        }
+    }
+
+  ]
+  

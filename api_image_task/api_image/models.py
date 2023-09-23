@@ -44,7 +44,7 @@ class AccountTier(models.Model):
 
 class ClientAccount(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="client")
-    account_type = models.OneToOneField(
+    account_type = models.ForeignKey(
         AccountTier, on_delete=models.CASCADE, related_name="account_type"
     )
 

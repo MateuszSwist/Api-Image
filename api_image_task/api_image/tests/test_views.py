@@ -168,11 +168,6 @@ class UserImageViewTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
-    def tearDown(self):
-        for filename in os.listdir(settings.MEDIA_ROOT):
-            if filename.startswith("test_image"):
-                os.remove(os.path.join(settings.MEDIA_ROOT, filename))
-
 
 class UserImagesListViewTests(APITestCase):
     def setUp(self):
@@ -259,7 +254,7 @@ class AddRetriveExpiringLinksTests(APITestCase):
 
         thumbnail_dimensions = ThumbnailDimensions.objects.create(height=100, width=100)
         account_tier = AccountTier.objects.create(
-            name="Test Tier", orginal_image_acces=True, time_limited_link_acces=False
+            name="Test Tier", orginal_image_acces=True, time_limited_link_acces=True
         )
         account_tier.image_sizes.add(thumbnail_dimensions)
 
@@ -353,7 +348,24 @@ class AddRetriveExpiringLinksTests(APITestCase):
         for filename in os.listdir(settings.MEDIA_ROOT):
             if filename.startswith("test_image"):
                 file_path = os.path.join(settings.MEDIA_ROOT, filename)
-                attempts = 0
+
+    def test_create_expiring_link_basic_account(self):
+        self.user.client.account_type.time_limited_link_acces = False
+        self.client.force_authenticate(user=self.user)
+
+        url = reverse("time-expiring")
+        data = {
+            "image_id": self.uploaded_image.id,
+            "time_to_expire": 3600,
+        }
+
+        response = self.client.post(url, data, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.json(),
+            {"account_type": "Your account lacks sufficient permissions"},
+        )
 
 
 class MediaConfigTestCase(TestCase):
