@@ -21,11 +21,11 @@ class ThumbnailDimensions(models.Model):
 
     def __str__(self):
         if self.height is None:
-            return f"{self.width} x any"
+            return f"{self.width}w x anyh"
         elif self.width is None:
-            return f"any x {self.height}"
+            return f"anyw x {self.height}h"
         else:
-            return f"{self.height}x{self.width}"
+            return f"{self.height}h x {self.width}w"
 
 
 class AccountTier(models.Model):

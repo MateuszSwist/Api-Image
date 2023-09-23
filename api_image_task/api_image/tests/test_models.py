@@ -1,3 +1,4 @@
+import os
 from django.test import TestCase
 from django.contrib.auth.models import User
 from ..models import (
@@ -11,7 +12,6 @@ from django.core.exceptions import ValidationError
 from PIL import Image as pilimage
 from io import BytesIO
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.utils import timezone
 
 
 class ThumbnailDimensionsTestCase(TestCase):
@@ -42,15 +42,21 @@ class ThumbnailDimensionsTestCase(TestCase):
 
     def test_valid_str_representation(self):
         thumbnail = ThumbnailDimensions(height=100, width=None)
-        self.assertEqual(str(thumbnail), "any x 100")
+        self.assertEqual(str(thumbnail), "anyw x 100h")
 
     def test_valid_str_representation_width(self):
         thumbnail = ThumbnailDimensions(height=None, width=200)
-        self.assertEqual(str(thumbnail), "200 x any")
+        self.assertEqual(str(thumbnail), "200w x anyh")
 
     def test_valid_str_representation_both(self):
         thumbnail = ThumbnailDimensions(height=300, width=400)
-        self.assertEqual(str(thumbnail), "300x400")
+        self.assertEqual(str(thumbnail), "300h x 400w")
+
+    def test_valid_thumbnail_dimensions(self):
+        thumbnail = ThumbnailDimensions(height=100, width=200)
+        thumbnail.full_clean()
+        self.assertEqual(thumbnail.height, 100)
+        self.assertEqual(thumbnail.width, 200)
 
 
 class AccountTierTestCase(TestCase):
@@ -118,6 +124,11 @@ class ClientAccountTestCase(TestCase):
 
         self.assertEqual(str(client_account), expected_str)
 
+    def tearDown(self):
+        for uploaded_image in UploadedImage.objects.all():
+            if os.path.isfile(uploaded_image.upload_image.path):
+                os.remove(uploaded_image.upload_image.path)
+
 
 class UploadedImageTestCase(TestCase):
     def setUp(self):
@@ -168,6 +179,11 @@ class UploadedImageTestCase(TestCase):
 
         self.assertEqual(str(uploaded_image), expected_str)
 
+    def tearDown(self):
+        for uploaded_image in UploadedImage.objects.all():
+            if os.path.isfile(uploaded_image.upload_image.path):
+                os.remove(uploaded_image.upload_image.path)
+
 
 class ExpiringLinksTestCase(TestCase):
     def setUp(self):
@@ -209,40 +225,7 @@ class ExpiringLinksTestCase(TestCase):
         self.assertEqual(retrieved_expiring_link.time_to_expire, 3600)
         self.assertEqual(retrieved_expiring_link.expiring_link, "randomlink123")
 
-
-def test_seconds_left(self):
-    current_time = timezone.now()
-
-    future_expiring_link = ExpiringLinks.objects.create(
-        image_id=self.uploaded_image,
-        time_to_expire=3600,
-        add_time=timezone.now() - timezone.timedelta(minutes=30),
-        expiring_link="randomlink123",
-    )
-
-    seconds_left = future_expiring_link.secounds_left()
-
-    self.assertGreaterEqual(seconds_left, 0)
-
-    past_expiring_link = ExpiringLinks.objects.create(
-        image_id=self.uploaded_image,
-        time_to_expire=3600,
-        add_time=current_time - timezone.timedelta(hours=2),
-        expiring_link="anotherlink123",
-    )
-
-    seconds_left = past_expiring_link.secounds_left()
-
-    self.assertLessEqual(seconds_left, 0)
-
-
-def test_str_method(self):
-    expiring_link = ExpiringLinks.objects.create(
-        image_id=self.uploaded_image,
-        time_to_expire=3600,
-        expiring_link="randomlink123",
-    )
-
-    expected_str = f"Line expire in: 3600 sec, owner: {self.uploaded_image.author}"
-
-    self.assertEqual(str(expiring_link), expected_str)
+    def tearDown(self):
+        for uploaded_image in UploadedImage.objects.all():
+            if os.path.isfile(uploaded_image.upload_image.path):
+                os.remove(uploaded_image.upload_image.path)

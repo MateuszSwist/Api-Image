@@ -1,3 +1,5 @@
+import os
+import tempfile
 from datetime import timedelta
 from io import BytesIO
 from PIL import Image as pilimage
@@ -57,6 +59,11 @@ class ChangeImageSizeTest(TestCase):
 
         self.assertEqual(resized_image.size, (200, 100))
 
+    def tearDown(self):
+        for filename in os.listdir(tempfile.gettempdir()):
+            if filename.startswith("test_image"):
+                os.remove(os.path.join(tempfile.gettempdir(), filename))
+
 
 class CrateRandomNameTest(TestCase):
     def assert_size_in_name(self, size_str, random_name):
@@ -112,6 +119,11 @@ class CrateRandomNameTest(TestCase):
         random_string = parts[0]
         self.assertEqual(len(random_string), 10)
 
+    def tearDown(self):
+        for filename in os.listdir(tempfile.gettempdir()):
+            if filename.startswith("test_image"):
+                os.remove(os.path.join(tempfile.gettempdir(), filename))
+
 
 class CalculateSecondsLeftTest(TestCase):
     def test_seconds_left_when_still_valid(self):
@@ -150,3 +162,8 @@ class CalculateSecondsLeftTest(TestCase):
         expected_seconds_left = 0
         result = calculate_seconds_left(add_time, time_to_expire)
         self.assertEqual(result, expected_seconds_left)
+
+    def tearDown(self):
+        for filename in os.listdir(tempfile.gettempdir()):
+            if filename.startswith("test_image"):
+                os.remove(os.path.join(tempfile.gettempdir(), filename))

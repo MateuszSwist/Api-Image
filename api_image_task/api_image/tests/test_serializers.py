@@ -120,6 +120,11 @@ class RetriveListImageSerializerTests(TestCase):
         }
         self.assertEqual(serializer.data, expected_data)
 
+    def tearDown(self):
+        for uploaded_image in UploadedImage.objects.all():
+            if os.path.isfile(uploaded_image.upload_image.path):
+                os.remove(uploaded_image.upload_image.path)
+
 
 class AddRetriveExpiringLinksSerializerTests(TestCase):
     def setUp(self):
@@ -165,3 +170,8 @@ class AddRetriveExpiringLinksSerializerTests(TestCase):
         data = {"image_id": self.uploaded_image.id, "time_to_expire": 1000}
         serializer = AddRetriveExpiringLinksSerializer(data=data)
         self.assertTrue(serializer.is_valid())
+
+    def tearDown(self):
+        for uploaded_image in UploadedImage.objects.all():
+            if os.path.isfile(uploaded_image.upload_image.path):
+                os.remove(uploaded_image.upload_image.path)

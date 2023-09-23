@@ -1,7 +1,10 @@
 import io
+import os
 from PIL import Image
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.contrib.auth.models import User
+from django.conf import settings
+from django.test import TestCase
 from django.utils import timezone
 from django.urls import reverse
 from rest_framework.test import APITestCase, APIClient
@@ -41,7 +44,7 @@ class AddImageViewTests(APITestCase):
 
     def test_add_image(self):
         self.client.force_authenticate(user=self.user)
-        url = "/add-image/"
+        url = reverse("add-image")
         data = {
             "title": "Test Image",
             "upload_image": self.image,
@@ -69,7 +72,7 @@ class AddImageViewTests(APITestCase):
         self.assertEqual(response.json(), expected_data)
 
     def test_add_image_unauthenticated(self):
-        url = "/add-image/"
+        url = reverse("add-image")
         data = {
             "title": "Test Image",
             "upload_image": self.image,
@@ -81,7 +84,7 @@ class AddImageViewTests(APITestCase):
 
     def test_add_image_invalid_data(self):
         self.client.force_authenticate(user=self.user)
-        url = "/add-image/"
+        url = reverse("add-image")
         data = {
             "title": "",
             "upload_image": self.image,
@@ -94,7 +97,7 @@ class AddImageViewTests(APITestCase):
 
     def test_add_image_no_image(self):
         self.client.force_authenticate(user=self.user)
-        url = "/add-image/"
+        url = reverse("add-image")
         data = {
             "title": "Test Image",
         }
@@ -103,6 +106,11 @@ class AddImageViewTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(UploadedImage.objects.count(), 0)
+
+    def tearDown(self):
+        for filename in os.listdir(settings.MEDIA_ROOT):
+            if "Test_Image" in filename:
+                os.remove(os.path.join(settings.MEDIA_ROOT, filename))
 
 
 class UserImageViewTests(APITestCase):
@@ -159,6 +167,11 @@ class UserImageViewTests(APITestCase):
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def tearDown(self):
+        for filename in os.listdir(settings.MEDIA_ROOT):
+            if filename.startswith("test_image"):
+                os.remove(os.path.join(settings.MEDIA_ROOT, filename))
 
 
 class UserImagesListViewTests(APITestCase):
@@ -230,6 +243,11 @@ class UserImagesListViewTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 0)
+
+    def tearDown(self):
+        for filename in os.listdir(settings.MEDIA_ROOT):
+            if filename.startswith("test_image"):
+                os.remove(os.path.join(settings.MEDIA_ROOT, filename))
 
 
 class AddRetriveExpiringLinksTests(APITestCase):
@@ -330,3 +348,20 @@ class AddRetriveExpiringLinksTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_410_GONE)
         self.assertEqual(response.json()["link_status"], "link already expired")
+
+    def tearDown(self):
+        for filename in os.listdir(settings.MEDIA_ROOT):
+            if filename.startswith("test_image"):
+                file_path = os.path.join(settings.MEDIA_ROOT, filename)
+                attempts = 0
+
+
+class MediaConfigTestCase(TestCase):
+    def test_media_root_exists(self):
+        self.assertTrue(os.path.exists(settings.MEDIA_ROOT))
+
+    def test_media_url(self):
+        self.assertTrue(settings.MEDIA_URL)
+
+    def test_media_url_starts_with_slash(self):
+        self.assertTrue(settings.MEDIA_URL.startswith("/"))
