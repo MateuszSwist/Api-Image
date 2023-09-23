@@ -49,6 +49,6 @@ def calculate_seconds_left(add_time, time_to_expire):
     current_time = timezone.now()
     time_difference = current_time - add_time
     seconds_difference = int(time_difference.total_seconds())
-    secounds_left = time_to_expire - seconds_difference
+    seconds_left = time_to_expire - seconds_difference
 
-    return max(secounds_left, 0)
+    return max(seconds_left, 0)

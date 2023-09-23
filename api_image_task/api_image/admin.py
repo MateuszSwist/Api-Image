@@ -39,7 +39,7 @@ class UploadedImageAdmin(admin.ModelAdmin):
 
 @admin.register(ExpiringLinks)
 class ExpiringLinksAdmin(admin.ModelAdmin):
-    list_display = ["add_time", "secounds_left", "expiring_link", "image_id"]
+    list_display = ["add_time", "seconds_left", "expiring_link", "image_id"]
 
     def seconds_left(self, obj):
         return calculate_seconds_left(

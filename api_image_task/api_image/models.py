@@ -73,10 +73,10 @@ class ExpiringLinks(models.Model):
 
     expiring_link = models.CharField(max_length=256, null=True, blank=True)
 
-    def secounds_left(self):
+    def seconds_left(self):
         return calculate_seconds_left(
             add_time=self.add_time, time_to_expire=self.time_to_expire
         )
 
     def __str__(self):
-        return f"Line expire in: {self.time_to_expire} sec, owner: {self.owner}."
+        return f"Link expire in: {self.time_to_expire} sec, owner: {self.owner}."

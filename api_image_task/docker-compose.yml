@@ -1,0 +1,25 @@
+version: "3.8"
+services:
+  app:
+    build: .
+    volumes:
+      - .:/image_app
+    ports:
+      - 8000:8000
+    container_name: imake_app_container
+    command: >
+      bash -c "python manage.py makemigrations && python manage.py migrate && python manage.py loaddata fixtures/01.built_in_account_tiers.json && python manage.py runserver 0.0.0.0:8000"
+
+  superuser:
+    build: .
+    command: >
+      bash -c "sleep 10 && python manage.py createsuperuser --no-input"
+    depends_on:
+      - app
+    environment:
+      - DJANGO_SUPERUSER_USERNAME=admin
+      - DJANGO_SUPERUSER_PASSWORD=admin
+      - DJANGO_SUPERUSER_EMAIL=admin@admin.com
+    volumes:
+      - .:/image_app
+
