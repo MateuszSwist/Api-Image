@@ -20,6 +20,19 @@ services:
       - DJANGO_SUPERUSER_USERNAME=admin
       - DJANGO_SUPERUSER_PASSWORD=admin
       - DJANGO_SUPERUSER_EMAIL=admin@admin.com
+      - OTHER_USER1_USERNAME=user1
+      - OTHER_USER1_PASSWORD=password1
+      - OTHER_USER1_EMAIL=user1@example.com
+      - OTHER_USER2_USERNAME=user2
+      - OTHER_USER2_PASSWORD=password2
+      - OTHER_USER2_EMAIL=user2@example.com
+      - OTHER_USER3_USERNAME=user3
+      - OTHER_USER3_PASSWORD=password3
+      - OTHER_USER3_EMAIL=user3@example.com
     volumes:
       - .:/image_app
+
+
+
+
 
