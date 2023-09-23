@@ -9,7 +9,7 @@ from ..models import ThumbnailDimensions
 from ..utils import calculate_seconds_left, change_image_size, create_random_name
 
 
-class ChangeImageSizeTestCase(TestCase):
+class ChangeImageSizeTest(TestCase):
     def create_image(self, width=100, height=100):
         image = pilimage.new("RGB", (width, height))
         image_io = BytesIO()
@@ -58,7 +58,7 @@ class ChangeImageSizeTestCase(TestCase):
         self.assertEqual(resized_image.size, (200, 100))
 
 
-class CrateRandomNameTestCase(TestCase):
+class CrateRandomNameTest(TestCase):
     def assert_size_in_name(self, size_str, random_name):
         parts = random_name.split("-")
         name = parts[1].split(".")[0]
@@ -113,7 +113,7 @@ class CrateRandomNameTestCase(TestCase):
         self.assertEqual(len(random_string), 10)
 
 
-class CalculateSecondsLeftTestCase(TestCase):
+class CalculateSecondsLeftTest(TestCase):
     def test_seconds_left_when_still_valid(self):
         add_time = timezone.now() - timedelta(hours=1)
         time_to_expire = 7200

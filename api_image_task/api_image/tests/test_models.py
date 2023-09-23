@@ -216,7 +216,7 @@ def test_seconds_left(self):
     future_expiring_link = ExpiringLinks.objects.create(
         image_id=self.uploaded_image,
         time_to_expire=3600,
-        add_time=current_time - timezone.timedelta(minutes=30),
+        add_time=timezone.now() - timezone.timedelta(minutes=30),
         expiring_link="randomlink123",
     )
 
@@ -234,3 +234,15 @@ def test_seconds_left(self):
     seconds_left = past_expiring_link.secounds_left()
 
     self.assertLessEqual(seconds_left, 0)
+
+
+def test_str_method(self):
+    expiring_link = ExpiringLinks.objects.create(
+        image_id=self.uploaded_image,
+        time_to_expire=3600,
+        expiring_link="randomlink123",
+    )
+
+    expected_str = f"Line expire in: 3600 sec, owner: {self.uploaded_image.author}"
+
+    self.assertEqual(str(expiring_link), expected_str)
