@@ -1,4 +1,5 @@
 # API-IMAGE
+![api-integration](https://github.com/MateuszSwist/Api-Image/assets/123180025/9f9aae1f-82c2-4f7c-9b3c-df9317ce4f8a)
 
 This is a small Django Rest Framework (DRF) project that allows users to upload images and obtain links to their thumbnails.
 
